@@ -1,5 +1,5 @@
 """Document chunker — 512-token chunks with financial metadata."""
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from src.ingestion.base import Document
 
 
