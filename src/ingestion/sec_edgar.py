@@ -1,5 +1,6 @@
 """SEC EDGAR document loader — fetches 10-K / 10-Q filings."""
 
+import html
 import io
 import re
 
@@ -165,10 +166,9 @@ class SecEdgarLoader(BaseDocumentLoader):
             return None
 
     @staticmethod
-    def _strip_html(html: str) -> str:
-        """Minimal HTML tag stripping for non-PDF filings."""
-        text = re.sub(r"<[^>]+>", " ", html)
-        text = re.sub(r"&nbsp;", " ", text)
-        text = re.sub(r"&amp;", "&", text)
+    def _strip_html(raw_html: str) -> str:
+        """Strip HTML tags and decode entities for non-PDF filings."""
+        text = re.sub(r"<[^>]+>", " ", raw_html)
+        text = html.unescape(text)
         text = re.sub(r"\s{2,}", " ", text)
         return text.strip()
