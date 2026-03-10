@@ -1,8 +1,8 @@
 """LangGraph StateGraph — Orchestrator entry point."""
-# TODO Week 2: implement full graph
-from typing import Annotated, TypedDict
-from langgraph.graph import StateGraph, END
-import operator
+
+from typing import TypedDict
+
+from langgraph.graph import END, StateGraph
 
 
 class AgentState(TypedDict):
@@ -14,15 +14,23 @@ class AgentState(TypedDict):
     retry_count: int
 
 
-def build_graph() -> StateGraph:
+def should_retry(state: AgentState) -> str:
+    if state.get("critique") == "insufficient" and state.get("retry_count", 0) < 2:
+        return "retry"
+    return "done"
+
+
+def build_graph():
+    from src.agents.retriever import retriever_node
+    from src.agents.analyzer import analyzer_node
+    from src.agents.critic import critic_node
+
     graph = StateGraph(AgentState)
 
-    # Nodes (stubs — implement in Week 2)
     graph.add_node("retriever", retriever_node)
     graph.add_node("analyzer", analyzer_node)
     graph.add_node("critic", critic_node)
 
-    # Edges
     graph.set_entry_point("retriever")
     graph.add_edge("retriever", "analyzer")
     graph.add_edge("analyzer", "critic")
@@ -31,22 +39,5 @@ def build_graph() -> StateGraph:
         should_retry,
         {"retry": "retriever", "done": END},
     )
+
     return graph.compile()
-
-
-def should_retry(state: AgentState) -> str:
-    if state["critique"] == "insufficient" and state["retry_count"] < 2:
-        return "retry"
-    return "done"
-
-
-async def retriever_node(state: AgentState) -> AgentState:
-    raise NotImplementedError
-
-
-async def analyzer_node(state: AgentState) -> AgentState:
-    raise NotImplementedError
-
-
-async def critic_node(state: AgentState) -> AgentState:
-    raise NotImplementedError
