@@ -53,3 +53,25 @@
 - AAPL 10-K (2025-10-31, HTML) → 575 chunks → 575/575 indexed into `financial_filings` ✓
 - `uv run python scripts/qa_test.py "What are Apple's main risk factors?"`
 - Retrieved 5 relevant chunks, Groq answered with citations ✓
+
+---
+
+## Day 2
+**Goal:** Multi-Agent Graph + Unit Tests
+
+**Completed:**
+- `src/agents/graph.py` — LangGraph `StateGraph` (Retriever → Analyzer → Critic → conditional retry)
+- `src/agents/retriever.py` — ChromaDB vector search node, increments `retry_count`
+- `src/agents/analyzer.py` — parallel Risk / Growth / Competitor via `asyncio.gather` + Groq
+- `src/agents/critic.py` — citation check, parses `VERDICT: sufficient|insufficient`, sets `final_report`
+- `tests/conftest.py` — shared fixtures (`sample_retrieved_docs`, `base_state`, `mock_embedding`)
+- `tests/unit/test_retriever.py` — 3 tests
+- `tests/unit/test_analyzer.py` — 3 tests
+- `tests/unit/test_critic.py` — 6 tests (including `_parse_verdict` edge cases)
+
+**Test result:** 12/12 passed ✓
+
+**Key decisions:**
+- `asyncio.to_thread` wraps sync Groq calls inside async analyzer — avoids blocking event loop
+- Critic forces `final_report` when `retry_count >= 2` regardless of verdict
+- `_parse_verdict` defaults to `"sufficient"` on malformed LLM response
