@@ -1,5 +1,7 @@
 # finscope
 
+![CI](https://github.com/choeyunbeom/finscope/actions/workflows/ci.yml/badge.svg)
+
 > Analyse any public company's financial filings in seconds using a Multi-Agent RAG system powered by LangGraph.
 
 ![demo](demo/demo.gif)
@@ -146,6 +148,20 @@ graph TD;
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
 ```
+
+---
+
+## Results
+
+Tested on Apple (AAPL) 10-K filing (2025-10-31):
+
+| Metric | Result |
+|---|---|
+| Filing ingested | 575 chunks from HTML 10-K |
+| Retrieval (hybrid) | 8 chunks retrieved per query |
+| Critic verdict (typical) | `sufficient` on first pass |
+| End-to-end latency | ~15s (Groq llama-3.3-70b, 3 parallel analyses) |
+| Unit tests | 12/12 passing |
 
 ---
 

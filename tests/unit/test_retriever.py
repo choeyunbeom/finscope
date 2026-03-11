@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from src.agents.graph import AgentState
+from src.ingestion.base import Document
 
 
 @pytest.fixture
@@ -18,21 +19,29 @@ def empty_state() -> AgentState:
     )
 
 
-@patch("src.agents.retriever._embed")
-@patch("src.agents.retriever.chromadb.PersistentClient")
-async def test_retriever_returns_documents(mock_chroma, mock_embed, empty_state, mock_embedding):
-    """Retriever node should return non-empty documents list."""
-    mock_embed.return_value = mock_embedding
+@pytest.fixture
+def mock_docs() -> list[Document]:
+    return [
+        Document(
+            content="Revenue was $394 billion.",
+            metadata={"chunk_id": "abc123", "filing_type": "10-K", "filing_date": "2022-10-28"},
+        ),
+        Document(
+            content="Risk factors include supply chain issues.",
+            metadata={"chunk_id": "def456", "filing_type": "10-K", "filing_date": "2022-10-28"},
+        ),
+    ]
 
-    mock_collection = MagicMock()
-    mock_collection.query.return_value = {
-        "documents": [["Revenue was $394 billion.", "Risk factors include supply chain issues."]],
-        "metadatas": [[
-            {"filing_type": "10-K", "filing_date": "2022-10-28"},
-            {"filing_type": "10-K", "filing_date": "2022-10-28"},
-        ]],
-    }
-    mock_chroma.return_value.get_collection.return_value = mock_collection
+
+@patch("src.agents.retriever.HybridRetriever")
+@patch("src.agents.retriever._load_all_documents")
+async def test_retriever_returns_documents(mock_load, mock_retriever_cls, empty_state, mock_docs):
+    """Retriever node should return non-empty documents list."""
+    mock_load.return_value = mock_docs
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve.return_value = mock_docs
+    mock_retriever_cls.return_value = mock_retriever
 
     from src.agents.retriever import retriever_node
     result = await retriever_node(empty_state)
@@ -42,14 +51,12 @@ async def test_retriever_returns_documents(mock_chroma, mock_embed, empty_state,
     assert result["documents"][0]["text"] == "Revenue was $394 billion."
 
 
-@patch("src.agents.retriever._embed")
-@patch("src.agents.retriever.chromadb.PersistentClient")
-async def test_retriever_increments_retry_count(mock_chroma, mock_embed, empty_state, mock_embedding):
+@patch("src.agents.retriever.HybridRetriever")
+@patch("src.agents.retriever._load_all_documents")
+async def test_retriever_increments_retry_count(mock_load, mock_retriever_cls, empty_state, mock_docs):
     """retry_count should increment on each retriever call."""
-    mock_embed.return_value = mock_embedding
-    mock_collection = MagicMock()
-    mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]]}
-    mock_chroma.return_value.get_collection.return_value = mock_collection
+    mock_load.return_value = mock_docs
+    mock_retriever_cls.return_value.retrieve.return_value = []
 
     from src.agents.retriever import retriever_node
     result = await retriever_node(empty_state)
@@ -57,9 +64,9 @@ async def test_retriever_increments_retry_count(mock_chroma, mock_embed, empty_s
     assert result["retry_count"] == 1
 
 
-@patch("src.agents.retriever._embed")
-@patch("src.agents.retriever.chromadb.PersistentClient")
-async def test_retriever_increments_from_existing_count(mock_chroma, mock_embed, mock_embedding):
+@patch("src.agents.retriever.HybridRetriever")
+@patch("src.agents.retriever._load_all_documents")
+async def test_retriever_increments_from_existing_count(mock_load, mock_retriever_cls, mock_docs):
     """retry_count should increment from existing value on retry."""
     state = AgentState(
         query="test",
@@ -69,10 +76,8 @@ async def test_retriever_increments_from_existing_count(mock_chroma, mock_embed,
         final_report="",
         retry_count=1,
     )
-    mock_embed.return_value = mock_embedding
-    mock_collection = MagicMock()
-    mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]]}
-    mock_chroma.return_value.get_collection.return_value = mock_collection
+    mock_load.return_value = mock_docs
+    mock_retriever_cls.return_value.retrieve.return_value = []
 
     from src.agents.retriever import retriever_node
     result = await retriever_node(state)
