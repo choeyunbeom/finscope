@@ -6,6 +6,8 @@
 
 ![demo](demo/demo.gif)
 
+> 📝 **Blog post:** [From arXiv to SEC: Building a Multi-Agent Financial Report Analyst with LangGraph](https://choeyunbeom.github.io/posts/finscope-multi-agent-rag/)
+
 Ask questions like:
 - *"What are Apple's key risk factors?"*
 - *"Summarise Tesla's latest 10-K filing"*
