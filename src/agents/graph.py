@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 
 class AgentState(TypedDict):
     query: str
+    company: str
     documents: list[dict]
     analysis: str
     critique: str

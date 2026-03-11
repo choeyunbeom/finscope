@@ -60,13 +60,25 @@ class HybridRetriever:
     # ------------------------------------------------------------------
 
     def _embed(self, text: str) -> list[float]:
-        resp = httpx.post(
-            f"{settings.OLLAMA_BASE_URL}/api/embed",
-            json={"model": settings.OLLAMA_EMBED_MODEL, "input": [text]},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.json()["embeddings"][0]
+        # Try new /api/embed first, fall back to /api/embeddings for older Ollama
+        try:
+            resp = httpx.post(
+                f"{settings.OLLAMA_BASE_URL}/api/embed",
+                json={"model": settings.OLLAMA_EMBED_MODEL, "input": [text]},
+                timeout=30,
+            )
+            if resp.status_code == 404:
+                raise ValueError("404")
+            resp.raise_for_status()
+            return resp.json()["embeddings"][0]
+        except (ValueError, httpx.HTTPStatusError):
+            resp = httpx.post(
+                f"{settings.OLLAMA_BASE_URL}/api/embeddings",
+                json={"model": settings.OLLAMA_EMBED_MODEL, "prompt": text},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()["embedding"]
 
     # ------------------------------------------------------------------
     # Search stages

@@ -35,6 +35,10 @@ def ingest_sec(company: str, filing_type: str) -> int:
 
     print("  Chunking...")
     chunks = chunk_documents(docs)
+    # Tag each chunk with normalized company name for retrieval filtering
+    company_key = company.upper()
+    for chunk in chunks:
+        chunk.metadata["company"] = company_key
     print(f"  {len(chunks)} chunks created")
 
     print("  Indexing into ChromaDB...")
@@ -60,6 +64,9 @@ def ingest_companies_house(company: str) -> int:
 
     print("  Chunking...")
     chunks = chunk_documents(docs)
+    company_key = company.upper()
+    for chunk in chunks:
+        chunk.metadata["company"] = company_key
     print(f"  {len(chunks)} chunks created")
 
     print("  Indexing into ChromaDB...")

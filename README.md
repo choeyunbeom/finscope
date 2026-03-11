@@ -72,10 +72,6 @@ ollama pull nomic-embed-text
 ## Run
 
 ```bash
-# Ingest a company's latest 10-K
-uv run python -m src.ingestion.ingest --company "Apple" --source sec --filing 10-K
-uv run python -m src.ingestion.ingest --company "AAPL" --source sec --filing 10-K
-
 # Start the API
 uv run python -m uvicorn src.api.main:app --reload
 

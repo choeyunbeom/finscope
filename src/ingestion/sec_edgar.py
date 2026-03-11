@@ -35,10 +35,19 @@ class SecEdgarLoader(BaseDocumentLoader):
     # ------------------------------------------------------------------
 
     def resolve_to_cik(self, user_input: str) -> str:
-        """Resolve ticker symbol or company name to CIK."""
+        """Resolve ticker symbol or company name to CIK.
+
+        Strategy:
+        1. If input looks like a ticker (1-5 alpha chars), try ticker lookup first.
+        2. Fall back to company name search if ticker lookup fails.
+        """
         stripped = user_input.strip()
-        if re.fullmatch(r"[A-Z]{1,5}", stripped):
-            return self._ticker_to_cik(stripped.upper())
+        upper = stripped.upper()
+        if re.fullmatch(r"[A-Z]{1,5}", upper):
+            try:
+                return self._ticker_to_cik(upper)
+            except ValueError:
+                pass
         return self._search_company(stripped)
 
     def _ticker_to_cik(self, ticker: str) -> str:
@@ -55,18 +64,34 @@ class SecEdgarLoader(BaseDocumentLoader):
         raise ValueError(f"Ticker not found: {ticker}")
 
     def _search_company(self, company_name: str) -> str:
-        url = f"https://efts.sec.gov/LATEST/search-index?q=%22{company_name}%22&forms=10-K"
+        """Search company by name using EDGAR company search API.
+
+        Uses /browse-edgar which returns companies sorted by relevance and size,
+        giving better results than full-text search for well-known companies.
+        """
         with httpx.Client(headers=self.headers, timeout=30) as client:
-            resp = client.get(url)
+            resp = client.get(
+                "https://www.sec.gov/cgi-bin/browse-edgar",
+                params={
+                    "company": company_name,
+                    "CIK": "",
+                    "type": "10-K",
+                    "dateb": "",
+                    "owner": "include",
+                    "count": "10",
+                    "search_text": "",
+                    "action": "getcompany",
+                    "output": "atom",
+                },
+            )
             resp.raise_for_status()
 
-        hits = resp.json().get("hits", {}).get("hits", [])
-        if not hits:
+        # Parse Atom XML response — CIK is in <cik> tag
+        ciks = re.findall(r"<cik>(\d+)</cik>", resp.text)
+        if not ciks:
             raise ValueError(f"Company not found: {company_name}")
 
-        ciks = hits[0]["_source"].get("ciks", [])
-        if not ciks:
-            raise ValueError(f"CIK not found for: {company_name}")
+        # Return first match (EDGAR sorts by relevance — largest/most relevant company first)
         return str(int(ciks[0]))
 
     # ------------------------------------------------------------------

@@ -17,6 +17,7 @@ def _generate_chunk_id(content: str, metadata: dict, index: int) -> str:
 
 
 def _embed_batch(texts: list[str]) -> list[list[float]] | None:
+    # Try new /api/embed first, fall back to individual /api/embeddings for older Ollama
     try:
         resp = httpx.post(
             f"{settings.OLLAMA_BASE_URL}/api/embed",
@@ -25,12 +26,27 @@ def _embed_batch(texts: list[str]) -> list[list[float]] | None:
         )
         if resp.status_code == 200:
             return resp.json()["embeddings"]
+        if resp.status_code == 404:
+            # Older Ollama: embed one by one
+            results = []
+            for text in texts:
+                r = httpx.post(
+                    f"{settings.OLLAMA_BASE_URL}/api/embeddings",
+                    json={"model": settings.OLLAMA_EMBED_MODEL, "prompt": text},
+                    timeout=60,
+                )
+                if r.status_code == 200:
+                    results.append(r.json()["embedding"])
+                else:
+                    return None
+            return results
     except Exception as e:
         print(f"[indexer] embed_batch failed: {e}")
     return None
 
 
 def _embed_single(text: str) -> list[float] | None:
+    # Try new /api/embed first, fall back to /api/embeddings for older Ollama
     try:
         resp = httpx.post(
             f"{settings.OLLAMA_BASE_URL}/api/embed",
@@ -39,6 +55,14 @@ def _embed_single(text: str) -> list[float] | None:
         )
         if resp.status_code == 200:
             return resp.json()["embeddings"][0]
+        if resp.status_code == 404:
+            resp = httpx.post(
+                f"{settings.OLLAMA_BASE_URL}/api/embeddings",
+                json={"model": settings.OLLAMA_EMBED_MODEL, "prompt": text},
+                timeout=60,
+            )
+            if resp.status_code == 200:
+                return resp.json()["embedding"]
     except Exception as e:
         print(f"[indexer] embed_single failed: {e}")
     return None

@@ -8,8 +8,10 @@ from src.ingestion.base import Document
 from src.retrieval.hybrid_retriever import HybridRetriever
 
 
-def _load_all_documents() -> list[Document]:
-    """Load all documents from ChromaDB for BM25 corpus.
+def _load_all_documents(company: str | None = None) -> list[Document]:
+    """Load documents from ChromaDB for BM25 corpus.
+
+    Filters by company metadata if provided to avoid cross-company contamination.
 
     Note: loads full collection on every call to build BM25 index + CrossEncoder.
     Acceptable for prototype scale (~500-2000 chunks).
@@ -19,7 +21,14 @@ def _load_all_documents() -> list[Document]:
     client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
     collection = client.get_collection(settings.CHROMA_COLLECTION)
 
-    results = collection.get(include=["documents", "metadatas"])
+    if company:
+        results = collection.get(
+            where={"company": company.upper()},
+            include=["documents", "metadatas"],
+        )
+    else:
+        results = collection.get(include=["documents", "metadatas"])
+
     return [
         Document(content=doc, metadata={**meta, "chunk_id": cid})
         for doc, meta, cid in zip(results["documents"], results["metadatas"], results["ids"])
@@ -28,8 +37,14 @@ def _load_all_documents() -> list[Document]:
 
 async def retriever_node(state: AgentState) -> dict:
     query = state["query"]
+    company = state.get("company", "")
 
-    all_docs = _load_all_documents()
+    all_docs = _load_all_documents(company=company)
+    if not all_docs:
+        return {
+            "documents": [],
+            "retry_count": state.get("retry_count", 0) + 1,
+        }
     retriever = HybridRetriever(all_docs)
     results = retriever.retrieve(query, top_k=8)
 

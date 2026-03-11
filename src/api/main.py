@@ -45,6 +45,7 @@ async def analyze(req: QueryRequest):
     with trace_graph(req.query) as trace:
         result = await graph.ainvoke({
             "query": req.query,
+            "company": req.company or "",
             "documents": [],
             "analysis": "",
             "critique": "",

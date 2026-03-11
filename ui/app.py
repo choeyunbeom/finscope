@@ -1,9 +1,11 @@
 """Streamlit demo UI."""
 
+import os
+
 import httpx
 import streamlit as st
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Financial Report Analyst", page_icon="📊", layout="wide")
 
