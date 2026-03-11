@@ -75,3 +75,19 @@
 - `asyncio.to_thread` wraps sync Groq calls inside async analyzer — avoids blocking event loop
 - Critic forces `final_report` when `retry_count >= 2` regardless of verdict
 - `_parse_verdict` defaults to `"sufficient"` on malformed LLM response
+
+---
+
+## Day 3
+**Goal:** Polish + Ship — UI, Langfuse, README
+
+**Completed:**
+- `src/api/main.py` — `/analyze` endpoint wired up (ingest → graph → response)
+- `ui/app.py` — Streamlit UI with sidebar settings, 2-column layout, sources expander
+- `monitoring/langfuse_config.py` — `trace_graph` context manager (no-op if keys not set)
+- Langfuse trace attached to `/analyze` endpoint
+- `README.md` — LangGraph Mermaid diagram + status updated
+
+**Key decisions:**
+- Langfuse is optional (no-op if `LANGFUSE_PUBLIC_KEY` not set) — avoids hard failure in local dev
+- UI connects to FastAPI via `httpx` — keeps agents server-side, UI stays thin

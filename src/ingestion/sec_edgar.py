@@ -37,7 +37,7 @@ class SecEdgarLoader(BaseDocumentLoader):
     def resolve_to_cik(self, user_input: str) -> str:
         """Resolve ticker symbol or company name to CIK."""
         stripped = user_input.strip()
-        if re.fullmatch(r"[A-Za-z]{1,5}", stripped):
+        if re.fullmatch(r"[A-Z]{1,5}", stripped):
             return self._ticker_to_cik(stripped.upper())
         return self._search_company(stripped)
 
@@ -64,7 +64,10 @@ class SecEdgarLoader(BaseDocumentLoader):
         if not hits:
             raise ValueError(f"Company not found: {company_name}")
 
-        return str(hits[0]["_source"]["entity_id"])
+        ciks = hits[0]["_source"].get("ciks", [])
+        if not ciks:
+            raise ValueError(f"CIK not found for: {company_name}")
+        return str(int(ciks[0]))
 
     # ------------------------------------------------------------------
     # Fetch filing metadata

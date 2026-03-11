@@ -3,11 +3,11 @@
 > Analyse any public company's financial filings in seconds using a Multi-Agent RAG system powered by LangGraph.
 
 Ask questions like:
-- *"What are Tesla's key risk factors in 2024?"*
-- *"Summarise Apple's latest 10-K filing"*
+- *"What are Apple's key risk factors?"*
+- *"Summarise Tesla's latest 10-K filing"*
 - *"What does HSBC's annual report say about credit exposure?"*
 
-finscope retrieves filings directly from **SEC EDGAR** and **Companies House**, then routes them through a 3-agent pipeline that delivers cited, hallucination-checked analysis — entirely local, no API costs.
+finscope retrieves filings directly from **SEC EDGAR** and **Companies House**, then routes them through a 3-agent pipeline that delivers cited, hallucination-checked analysis.
 
 ---
 
@@ -16,13 +16,13 @@ finscope retrieves filings directly from **SEC EDGAR** and **Companies House**, 
 ```
 User Query (e.g. "AAPL" or "Apple")
     ↓
-[Input Resolver] — ticker/name → CIK → latest 10-K PDF
+[Input Resolver] — ticker/name → CIK → latest 10-K
     ↓
-[Retriever Agent] — PDF → chunks → ChromaDB (dense + BM25 hybrid)
+[Retriever Agent] — ChromaDB dense + BM25 hybrid search
     ↓
 [Analyzer Agent] — Risk / Growth / Competitor (runs in parallel)
     ↓
-[Critic Agent] — hallucination check → retry if >30% uncited (max 2x)
+[Critic Agent] — citation check → retry if >30% uncited (max 2x)
     ↓
 Final Report with source citations
 ```
@@ -34,14 +34,14 @@ Final Report with source citations
 | Layer | Choice | Why |
 |---|---|---|
 | Agent Orchestration | LangGraph | StateGraph with conditional retry edges |
-| LLM | qwen2.5:14b via Ollama | Local, no API cost |
-| Embedding | nomic-embed-text via Ollama | Local |
+| LLM | Groq (llama-3.3-70b) | Fast inference, free tier |
+| Embedding | nomic-embed-text via Ollama | Local, no cost |
 | Vector DB | ChromaDB | Zero-infra, persistent |
-| Retrieval | Dense + BM25 hybrid | Better recall on financial jargon |
+| Retrieval | Dense + BM25 hybrid + cross-encoder rerank | Better recall on financial jargon |
 | PDF Parsing | pdfplumber | Handles financial tables |
 | Backend | FastAPI | |
 | UI | Streamlit | |
-| Monitoring | Langfuse | LLM tracing + eval signals |
+| Monitoring | Langfuse | LLM tracing (optional) |
 | Data Sources | SEC EDGAR API, Companies House API | Free, legal, no scraping |
 
 ---
@@ -54,10 +54,10 @@ uv sync
 
 # 2. Configure environment
 cp .env.example .env
-# Fill in: SEC_EDGAR_USER_AGENT, COMPANIES_HOUSE_API_KEY (optional), Langfuse keys
+# Required: GROQ_API_KEY, SEC_EDGAR_USER_AGENT
+# Optional: COMPANIES_HOUSE_API_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
 
-# 3. Pull Ollama models
-ollama pull qwen2.5:14b
+# 3. Pull Ollama embedding model
 ollama pull nomic-embed-text
 ```
 
@@ -67,13 +67,25 @@ ollama pull nomic-embed-text
 
 ```bash
 # Ingest a company's latest 10-K
-python -m src.ingestion.ingest --company "Apple" --source sec --filing 10-K
+uv run python -m src.ingestion.ingest --company "Apple" --source sec --filing 10-K
+uv run python -m src.ingestion.ingest --company "AAPL" --source sec --filing 10-K
 
 # Start the API
-uvicorn src.api.main:app --reload
+uv run python -m uvicorn src.api.main:app --reload
 
 # Launch the UI
-streamlit run ui/app.py
+uv run python -m streamlit run ui/app.py
+
+# Run tests
+uv run python -m pytest tests/ -v
+```
+
+### Docker
+
+```bash
+docker compose up
+# API → http://localhost:8000
+# UI  → http://localhost:8501
 ```
 
 ---
@@ -81,28 +93,57 @@ streamlit run ui/app.py
 ## Project Structure
 
 ```
-src/
-├── agents/
-│   ├── graph.py          # LangGraph StateGraph (entry point)
-│   ├── retriever.py      # SEC EDGAR / Companies House → ChromaDB
-│   ├── analyzer.py       # Parallel Risk / Growth / Competitor analysis
-│   └── critic.py         # Citation check + retry decision
-├── ingestion/
-│   ├── base.py           # BaseDocumentLoader
-│   ├── sec_edgar.py      # SEC EDGAR API (10-K, 10-Q)
-│   └── companies_house.py
-├── retrieval/
-│   ├── chunker.py        # 512-token chunks with financial metadata
-│   └── hybrid_retriever.py
-└── api/
-    └── main.py
+finscope/
+├── src/
+│   ├── agents/
+│   │   ├── graph.py          # LangGraph StateGraph (entry point)
+│   │   ├── retriever.py      # ChromaDB vector search node
+│   │   ├── analyzer.py       # Parallel Risk / Growth / Competitor analysis
+│   │   └── critic.py         # Citation check + retry decision
+│   ├── ingestion/
+│   │   ├── base.py           # BaseDocumentLoader
+│   │   ├── sec_edgar.py      # SEC EDGAR API (10-K, 10-Q)
+│   │   ├── companies_house.py
+│   │   ├── indexer.py        # ChromaDB indexing pipeline
+│   │   └── ingest.py         # CLI entrypoint
+│   ├── retrieval/
+│   │   ├── chunker.py        # 512-token chunks with financial metadata
+│   │   └── hybrid_retriever.py  # Dense + BM25 + RRF + rerank
+│   └── api/
+│       └── main.py           # FastAPI /analyze endpoint
+├── ui/
+│   └── app.py                # Streamlit demo
+├── monitoring/
+│   └── langfuse_config.py    # Optional Langfuse tracing
+└── tests/
+    └── unit/                 # 12 unit tests (12/12 passing)
 ```
 
 ---
 
-## Status
+## LangGraph Diagram
 
-> Week 1 in progress — building SEC EDGAR & Companies House ingestion pipeline.
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	retriever(retriever)
+	analyzer(analyzer)
+	critic(critic)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> retriever;
+	analyzer --> critic;
+	critic -. &nbsp;done&nbsp; .-> __end__;
+	critic -. &nbsp;retry&nbsp; .-> retriever;
+	retriever --> analyzer;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
 
 ---
 
