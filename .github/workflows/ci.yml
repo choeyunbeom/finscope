@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run unit tests
+        run: uv run python -m pytest tests/unit/ -v
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLM_PROVIDER: groq
+          GROQ_MODEL: llama-3.3-70b-versatile
+          OLLAMA_BASE_URL: http://localhost:11434
+          OLLAMA_EMBED_MODEL: nomic-embed-text
+          SEC_EDGAR_USER_AGENT: "ci ci@ci.com"
+          CHROMA_PERSIST_DIR: ./chroma_db
+          CHROMA_COLLECTION: financial_filings

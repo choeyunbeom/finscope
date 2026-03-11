@@ -149,6 +149,19 @@ graph TD;
 
 ---
 
+## What's Different from arXiv RAG
+
+| | [arXiv RAG](https://github.com/choeyunbeom/arxiv_rag_system) | finscope |
+|---|---|---|
+| Domain | Academic papers | Financial filings (10-K, annual reports) |
+| Agent architecture | Single-agent | Multi-agent (Retriever → Analyzer → Critic) |
+| Analysis | Single Q&A | Parallel Risk / Growth / Competitor |
+| Hallucination check | None | Critic agent with citation check + retry loop |
+| Data sources | arXiv API | SEC EDGAR + Companies House |
+| Chunking | Default | 512-token with financial metadata |
+
+---
+
 ## Background
 
 Extended from [arxiv_rag_system](https://github.com/choeyunbeom/arxiv_rag_system) — same hybrid retrieval pipeline, adapted for financial filings instead of academic papers.
