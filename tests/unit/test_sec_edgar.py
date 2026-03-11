@@ -57,13 +57,9 @@ def test_ticker_to_cik_not_found(loader):
 
 
 def test_search_company_found(loader):
-    """Should return CIK from EDGAR search results."""
+    """Should return CIK from EDGAR /browse-edgar Atom response."""
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {
-        "hits": {
-            "hits": [{"_source": {"ciks": ["320193"], "display_names": ["Apple Inc"]}}]
-        }
-    }
+    mock_resp.text = "<feed><entry><content><company-info><cik>0000320193</cik></company-info></content></entry></feed>"
     with patch("src.ingestion.sec_edgar.httpx.Client") as mock_client_cls:
         mock_client_cls.return_value.__enter__.return_value.get.return_value = mock_resp
         result = loader._search_company("Apple")
@@ -71,9 +67,9 @@ def test_search_company_found(loader):
 
 
 def test_search_company_not_found(loader):
-    """Should raise ValueError when search returns no hits."""
+    """Should raise ValueError when Atom response contains no CIK."""
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"hits": {"hits": []}}
+    mock_resp.text = "<feed></feed>"
     with patch("src.ingestion.sec_edgar.httpx.Client") as mock_client_cls:
         mock_client_cls.return_value.__enter__.return_value.get.return_value = mock_resp
         with pytest.raises(ValueError, match="Company not found"):
