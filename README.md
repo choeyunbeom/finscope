@@ -6,7 +6,7 @@
 
 ![demo](demo/demo.gif)
 
-> 📝 **Blog post:** [From arXiv to SEC: Building a Multi-Agent Financial Report Analyst with LangGraph](https://choeyunbeom.github.io/posts/finscope-multi-agent-rag/)
+> 📝 **Blog post:** [From arXiv to SEC: Building a Multi-Agent Financial Report Analyst with LangGraph](https://choeyunbeom.github.io/machine%20learning/nlp/finscope-multi-agent-financial-analyst/)
 
 Ask questions like:
 - *"What are Apple's key risk factors?"*
