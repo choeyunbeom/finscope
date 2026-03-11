@@ -45,8 +45,8 @@ class SecEdgarLoader(BaseDocumentLoader):
         with httpx.Client(headers=self.headers, timeout=30) as client:
             resp = client.get(TICKER_JSON_URL)
             resp.raise_for_status()
+            data = resp.json()
 
-        data = resp.json()
         ticker_upper = ticker.upper()
         for entry in data.values():
             if entry["ticker"].upper() == ticker_upper:

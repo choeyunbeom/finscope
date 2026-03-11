@@ -9,7 +9,13 @@ from src.retrieval.hybrid_retriever import HybridRetriever
 
 
 def _load_all_documents() -> list[Document]:
-    """Load all documents from ChromaDB for BM25 corpus."""
+    """Load all documents from ChromaDB for BM25 corpus.
+
+    Note: loads full collection on every call to build BM25 index + CrossEncoder.
+    Acceptable for prototype scale (~500-2000 chunks).
+    Production improvement: cache HybridRetriever instance per collection,
+    invalidate on new ingestion.
+    """
     client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
     collection = client.get_collection(settings.CHROMA_COLLECTION)
 

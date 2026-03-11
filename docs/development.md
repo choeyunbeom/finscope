@@ -91,3 +91,20 @@
 **Key decisions:**
 - Langfuse is optional (no-op if `LANGFUSE_PUBLIC_KEY` not set) — avoids hard failure in local dev
 - UI connects to FastAPI via `httpx` — keeps agents server-side, UI stays thin
+
+---
+
+## Post Day 3 — Code Review Fixes
+
+**Issues addressed after external review:**
+
+- `retriever_node` now calls `HybridRetriever.retrieve()` — previously used dense-only ChromaDB search, README claimed hybrid
+- `_ticker_to_cik` bug — `resp.json()` moved inside `with httpx.Client(...)` block
+- `tests/unit/test_sec_edgar.py` — 8 tests added (resolve, ticker, search, fetch, strip_html)
+- `tests/unit/test_companies_house.py` — 4 tests added (resolve, fetch, error handling)
+- README: CI badge, Results table, "What's Different from arXiv RAG" comparison table
+- README: unit test count corrected (12 → 20)
+- `_load_all_documents()`: added docstring noting prototype-scale tradeoff and production improvement path (cache HybridRetriever per collection)
+- `.github/workflows/ci.yml`: GitHub Actions on push/PR to main
+
+**Test result:** 24/24 passed ✓
