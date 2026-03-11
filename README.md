@@ -2,6 +2,8 @@
 
 > Analyse any public company's financial filings in seconds using a Multi-Agent RAG system powered by LangGraph.
 
+![demo](demo/demo.gif)
+
 Ask questions like:
 - *"What are Apple's key risk factors?"*
 - *"Summarise Tesla's latest 10-K filing"*
