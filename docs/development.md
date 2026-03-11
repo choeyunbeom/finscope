@@ -108,3 +108,30 @@
 - `.github/workflows/ci.yml`: GitHub Actions on push/PR to main
 
 **Test result:** 24/24 passed ✓
+
+---
+
+## Post Day 3 — Bug Fix: Cross-Company Contamination & CIK Misresolution
+
+**Root cause identified:**
+
+`_search_company()` was using EDGAR full-text search (`/LATEST/search-index`), which returns filings ranked by text match — not company relevance. Querying `"apple"` returned **Apple Hospitality REIT** (CIK 1418121) instead of **Apple Inc.** (CIK 320193), because the REIT had more recent filings matching the keyword.
+
+Additionally, `resolve_to_cik` only checked uppercase ticker regex on the raw input, so lowercase inputs like `"apple"` bypassed ticker lookup entirely and fell through to the broken company search.
+
+**Fixes:**
+
+- `sec_edgar.py` — `resolve_to_cik`: uppercase input before ticker regex check; ticker lookup wrapped in try/except to fall back to name search on miss
+- `sec_edgar.py` — `_search_company`: replaced EFTS full-text search with EDGAR `/browse-edgar` Atom API, which ranks results by company relevance and size — `"apple"` now correctly returns Apple Inc. first
+- `agents/retriever.py` — removed fallback-to-all-docs when company filter returns empty; returns empty documents instead of leaking other companies' data
+
+**Verification:**
+
+```
+apple  → CIK 320193  (Apple Inc.)        ✓
+AAPL   → CIK 320193  (Apple Inc.)        ✓
+Tesla  → CIK 1318605 (Tesla Inc.)        ✓
+```
+
+- Stale APPLE data (Apple Hospitality REIT, 1,209 chunks) removed from ChromaDB
+- Re-ingested as Apple Inc. → correct 10-K (2025-10-31) returned ✓
