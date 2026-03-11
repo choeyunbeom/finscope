@@ -120,7 +120,7 @@ finscope/
 ├── monitoring/
 │   └── langfuse_config.py    # Optional Langfuse tracing
 └── tests/
-    └── unit/                 # 20 unit tests (20/20 passing)
+    └── unit/                 # 24 unit tests (24/24 passing)
 ```
 
 ---
@@ -161,7 +161,7 @@ Tested on Apple (AAPL) 10-K filing (2025-10-31):
 | Retrieval (hybrid) | 8 chunks retrieved per query |
 | Critic verdict (typical) | `sufficient` on first pass |
 | End-to-end latency | ~15s (Groq llama-3.3-70b, 3 parallel analyses) |
-| Unit tests | 20/20 passing |
+| Unit tests | 24/24 passing |
 
 ---
 
