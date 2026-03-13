@@ -7,6 +7,12 @@ from src.agents.graph import build_graph
 from src.ingestion.ingest import ingest_sec, ingest_companies_house
 from monitoring.langfuse_config import trace_graph
 
+try:
+    from langfuse import observe as _observe
+except Exception:
+    def _observe(fn):  # no-op if langfuse unavailable
+        return fn
+
 app = FastAPI(title="Financial Report Analyst", version="0.1.0")
 
 
@@ -29,6 +35,7 @@ async def health():
 
 
 @app.post("/analyze", response_model=QueryResponse)
+@_observe(name="financial-analysis")
 async def analyze(req: QueryRequest):
     # Ingest if company provided
     if req.company:
@@ -42,7 +49,7 @@ async def analyze(req: QueryRequest):
 
     # Run multi-agent graph
     graph = build_graph()
-    with trace_graph(req.query) as trace:
+    with trace_graph(req.query):
         result = await graph.ainvoke({
             "query": req.query,
             "company": req.company or "",
@@ -52,8 +59,6 @@ async def analyze(req: QueryRequest):
             "final_report": "",
             "retry_count": 0,
         })
-        if trace:
-            trace.update(output={"report": result["final_report"], "retry_count": result["retry_count"]})
 
     sources = [
         f"{d['metadata'].get('filing_type', '')} {d['metadata'].get('filing_date', '')} — {d['text'][:80]}..."

@@ -1,16 +1,16 @@
-"""Langfuse tracing configuration."""
+"""Langfuse tracing configuration (v3 / OpenTelemetry-based)."""
 
 import os
 from contextlib import contextmanager
 
-_client = None
+_langfuse = None
 
 
 def get_langfuse():
     """Return Langfuse client, or None if keys not configured."""
-    global _client
-    if _client is not None:
-        return _client
+    global _langfuse
+    if _langfuse is not None:
+        return _langfuse
 
     pub = os.getenv("LANGFUSE_PUBLIC_KEY")
     sec = os.getenv("LANGFUSE_SECRET_KEY")
@@ -19,33 +19,28 @@ def get_langfuse():
 
     try:
         from langfuse import Langfuse
-        _client = Langfuse(
+        _langfuse = Langfuse(
             public_key=pub,
             secret_key=sec,
             host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
         )
-        return _client
+        return _langfuse
     except Exception:
         return None
 
 
 @contextmanager
 def trace_graph(query: str):
-    """Context manager that creates a Langfuse trace for a graph run."""
+    """Context manager that wraps a graph run in a Langfuse trace (v3)."""
     lf = get_langfuse()
     if lf is None:
         yield None
         return
 
-    trace = lf.trace(name="financial-analysis", input={"query": query})
-    try:
-        yield trace
-    finally:
-        lf.flush()
+    yield lf
+    lf.flush()
 
 
 def trace_span(trace, name: str, input_data: dict):
-    """Create a span on an existing trace. No-op if trace is None."""
-    if trace is None:
-        return None
-    return trace.span(name=name, input=input_data)
+    """No-op in v3 — spans are handled via @observe decorator."""
+    return None
