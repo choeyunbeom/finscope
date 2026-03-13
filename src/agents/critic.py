@@ -7,6 +7,12 @@ from groq import Groq
 from src.api.core.config import settings
 from src.agents.graph import AgentState
 
+try:
+    from langfuse import observe
+except ImportError:
+    def observe(fn=None, **kwargs):
+        return fn if fn is not None else lambda f: f
+
 CRITIC_PROMPT = """You are a financial analysis quality reviewer.
 
 Review the following analysis and check whether each factual claim is supported by the provided source excerpts.
@@ -47,6 +53,7 @@ def _parse_verdict(response: str) -> tuple[str, str]:
     return verdict, feedback
 
 
+@observe(name="critic-node")
 async def critic_node(state: AgentState) -> dict:
     context = _build_context(state["documents"])
 
@@ -70,5 +77,6 @@ async def critic_node(state: AgentState) -> dict:
 
     return {
         "critique": verdict,
+        "critique_feedback": feedback,
         "final_report": final_report,
     }

@@ -11,6 +11,7 @@ class AgentState(TypedDict):
     documents: list[dict]
     analysis: str
     critique: str
+    critique_feedback: str
     final_report: str
     retry_count: int
 

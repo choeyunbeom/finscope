@@ -7,6 +7,12 @@ from src.agents.graph import AgentState
 from src.ingestion.base import Document
 from src.retrieval.hybrid_retriever import HybridRetriever
 
+try:
+    from langfuse import observe
+except ImportError:
+    def observe(fn=None, **kwargs):
+        return fn if fn is not None else lambda f: f
+
 
 def _load_all_documents(company: str | None = None) -> list[Document]:
     """Load documents from ChromaDB for BM25 corpus.
@@ -35,6 +41,7 @@ def _load_all_documents(company: str | None = None) -> list[Document]:
     ]
 
 
+@observe(name="retriever-node")
 async def retriever_node(state: AgentState) -> dict:
     query = state["query"]
     company = state.get("company", "")

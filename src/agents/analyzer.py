@@ -7,6 +7,12 @@ from groq import Groq
 from src.api.core.config import settings
 from src.agents.graph import AgentState
 
+try:
+    from langfuse import observe
+except ImportError:
+    def observe(fn=None, **kwargs):
+        return fn if fn is not None else lambda f: f
+
 RISK_PROMPT = """You are a financial risk analyst. Based on the following excerpts from a financial filing,
 identify and summarise the key risk factors. Be specific and cite the source text.
 
@@ -49,21 +55,25 @@ def _call_groq(prompt: str) -> str:
     return response.choices[0].message.content
 
 
+@observe(name="analyze-risk")
 async def analyze_risk(documents: list[dict]) -> str:
     context = _build_context(documents)
     return await asyncio.to_thread(_call_groq, RISK_PROMPT.format(context=context))
 
 
+@observe(name="analyze-growth")
 async def analyze_growth(documents: list[dict]) -> str:
     context = _build_context(documents)
     return await asyncio.to_thread(_call_groq, GROWTH_PROMPT.format(context=context))
 
 
+@observe(name="analyze-competitors")
 async def analyze_competitors(documents: list[dict]) -> str:
     context = _build_context(documents)
     return await asyncio.to_thread(_call_groq, COMPETITOR_PROMPT.format(context=context))
 
 
+@observe(name="analyzer-node")
 async def analyzer_node(state: AgentState) -> dict:
     risk, growth, competitors = await asyncio.gather(
         analyze_risk(state["documents"]),
