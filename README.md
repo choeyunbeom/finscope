@@ -19,18 +19,15 @@ finscope retrieves filings directly from **SEC EDGAR** and **Companies House**, 
 
 ## How It Works
 
-```
-User Query (e.g. "AAPL" or "Apple")
-    ↓
-[Input Resolver] — ticker/name → CIK → latest 10-K
-    ↓
-[Retriever Agent] — ChromaDB dense + BM25 hybrid search
-    ↓
-[Analyzer Agent] — Risk / Growth / Competitor (runs in parallel)
-    ↓
-[Critic Agent] — citation check → retry if >30% uncited (max 2x)
-    ↓
-Final Report with source citations
+```mermaid
+flowchart TD
+    A["User Query (e.g. AAPL or Apple)"] --> B["Input Resolver\nticker/name → CIK → latest 10-K"]
+    B --> C["Retriever Agent\nChromaDB dense + BM25 hybrid search"]
+    C --> D["Analyzer Agent"]
+    D --> D1["Risk"] & D2["Growth"] & D3["Competitor"]
+    D1 & D2 & D3 --> E["Critic Agent\ncitation check"]
+    E -- "≤30% uncited" --> F["Final Report with source citations"]
+    E -- ">30% uncited\n(max 2 retries)" --> C
 ```
 
 ---
