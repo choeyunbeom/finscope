@@ -160,6 +160,26 @@ Tested on Apple (AAPL) 10-K filing (2025-10-31):
 
 ---
 
+## Critic Agent Evaluation
+
+We tested whether the Critic Agent's LLM-as-Judge approach actually catches hallucinations by running synthetic test cases (clean, hallucinated, and borderline analyses) against real AAPL 10-K source chunks.
+
+| Metric | 70B (llama-3.3-70b) | 8B (llama-3.1-8b) |
+|---|---|---|
+| Sensitivity (hallucination detection) | **100%** (3/3) | 67% (2/3) |
+| Specificity (clean pass-through) | 67% (2/3) | 67% (2/3) |
+| Accuracy | **83%** | 67% |
+| Borderline detection (~30% altered) | 3/3 caught | 0/3 caught |
+
+Key findings:
+- **Model size matters significantly** — 70B catches all hallucinations and borderline cases; 8B misses both.
+- **False positives exist** — both models occasionally flag clean analyses as insufficient (paraphrased content treated as uncited).
+- All experiment runs are traced in **Langfuse** for reproducibility.
+
+Full report: [`docs/REPORT.md`](docs/REPORT.md)
+
+---
+
 ## What's Different from arXiv RAG
 
 | | [arXiv RAG](https://github.com/choeyunbeom/arxiv_rag_system) | finscope |
