@@ -26,12 +26,14 @@ def build_graph():
     from src.agents.retriever import retriever_node
     from src.agents.analyzer import analyzer_node
     from src.agents.critic import critic_node
+    from src.agents.query_rewriter import query_rewriter_node
 
     graph = StateGraph(AgentState)
 
     graph.add_node("retriever", retriever_node)
     graph.add_node("analyzer", analyzer_node)
     graph.add_node("critic", critic_node)
+    graph.add_node("query_rewriter", query_rewriter_node)
 
     graph.set_entry_point("retriever")
     graph.add_edge("retriever", "analyzer")
@@ -39,7 +41,8 @@ def build_graph():
     graph.add_conditional_edges(
         "critic",
         should_retry,
-        {"retry": "retriever", "done": END},
+        {"retry": "query_rewriter", "done": END},
     )
+    graph.add_edge("query_rewriter", "retriever")
 
     return graph.compile()

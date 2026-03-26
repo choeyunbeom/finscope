@@ -24,8 +24,10 @@ Analysis to review:
 {analysis}
 
 For each claim in the analysis, determine if it is:
-- CITED: directly supported by the source excerpts
-- UNCITED: not supported by the source excerpts
+- CITED: directly supported by the source excerpts (exact quotes OR semantically equivalent paraphrasing — if the core facts, numbers, and meaning match the source, count it as CITED even if the wording differs)
+- UNCITED: makes a factual assertion with NO corresponding information in the source excerpts
+
+Important: minor paraphrasing, summarisation, and rewording are acceptable as long as the numerical values and core facts faithfully reflect the source material. Only mark a claim UNCITED if it introduces information not present in any source excerpt.
 
 Respond in this exact format:
 CITED_COUNT: <number>
@@ -33,7 +35,7 @@ UNCITED_COUNT: <number>
 VERDICT: <sufficient|insufficient>
 FEEDBACK: <one sentence explaining your verdict>
 
-A verdict is "insufficient" if more than 30% of claims are uncited."""
+A verdict is "insufficient" if more than 35% of claims are uncited."""
 
 
 def _build_context(documents: list[dict]) -> str:

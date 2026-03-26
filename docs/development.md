@@ -135,3 +135,36 @@ Tesla  → CIK 1318605 (Tesla Inc.)        ✓
 
 - Stale APPLE data (Apple Hospitality REIT, 1,209 chunks) removed from ChromaDB
 - Re-ingested as Apple Inc. → correct 10-K (2025-10-31) returned ✓
+
+---
+
+## Refactor — Production Hardening
+
+**Goal:** Address 4 architectural improvements identified during code review.
+
+**Completed:**
+
+### 1. Critic Agent — Reduced False Positives
+- `critic.py` — updated prompt to accept **semantic equivalence** (paraphrasing with matching facts/numbers counts as CITED)
+- Raised uncited threshold from 30% → 35% to reduce false rejections of valid analyses
+- Root cause: Analyzer paraphrases source text → Critic flagged as uncited → unnecessary retries
+
+### 2. Query Rewriter Node — Smarter Retries
+- `src/agents/query_rewriter.py` — new LangGraph node
+- On retry, Critic feedback is passed to Query Rewriter which reformulates the search query using alternative financial terminology (e.g. "revenue" → "net sales")
+- Graph flow changed: `Critic → Query Rewriter → Retriever` (was: `Critic → Retriever`)
+- Prevents the retry loop from fetching identical documents and producing identical results
+
+### 3. API Ingestion — Async Pipeline
+- `src/api/main.py` — added `POST /analyze/async` + `GET /analyze/status/{job_id}`
+- Ingestion + analysis runs in `BackgroundTasks`, client polls for status
+- Job states: `pending → ingesting → analyzing → completed | failed`
+- Original sync `/analyze` endpoint kept for backward compatibility (Streamlit UI)
+
+### 4. BM25 — Per-Company Retriever Caching
+- `src/agents/retriever.py` — `_retriever_cache` stores `HybridRetriever` instances keyed by company
+- Cache invalidation: if chunk count changes (new ingestion detected)
+- `invalidate_cache(company)` public API for explicit invalidation
+- Eliminates redundant BM25 index + CrossEncoder initialization on retry loops and repeated queries
+
+**Test result:** 24/24 passed ✓

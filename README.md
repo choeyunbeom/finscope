@@ -25,9 +25,10 @@ flowchart TD
     B --> C["Retriever Agent\nChromaDB dense + BM25 hybrid search"]
     C --> D["Analyzer Agent"]
     D --> D1["Risk"] & D2["Growth"] & D3["Competitor"]
-    D1 & D2 & D3 --> E["Critic Agent\ncitation check"]
-    E -- "≤30% uncited" --> F["Final Report with source citations"]
-    E -- ">30% uncited\n(max 2 retries)" --> C
+    D1 & D2 & D3 --> E["Critic Agent\ncitation check (semantic equivalence)"]
+    E -- "≤35% uncited" --> F["Final Report with source citations"]
+    E -- ">35% uncited\n(max 2 retries)" --> QR["Query Rewriter\nfeedback-driven query reformulation"]
+    QR --> C
 ```
 
 ---
@@ -95,27 +96,28 @@ docker compose up
 finscope/
 ├── src/
 │   ├── agents/
-│   │   ├── graph.py          # LangGraph StateGraph (entry point)
-│   │   ├── retriever.py      # ChromaDB vector search node
-│   │   ├── analyzer.py       # Parallel Risk / Growth / Competitor analysis
-│   │   └── critic.py         # Citation check + retry decision
+│   │   ├── graph.py            # LangGraph StateGraph (entry point)
+│   │   ├── retriever.py        # Hybrid search node (with per-company caching)
+│   │   ├── analyzer.py         # Parallel Risk / Growth / Competitor analysis
+│   │   ├── critic.py           # Citation check + retry decision (semantic equivalence)
+│   │   └── query_rewriter.py   # Feedback-driven query reformulation on retry
 │   ├── ingestion/
-│   │   ├── base.py           # BaseDocumentLoader
-│   │   ├── sec_edgar.py      # SEC EDGAR API (10-K, 10-Q)
+│   │   ├── base.py             # BaseDocumentLoader
+│   │   ├── sec_edgar.py        # SEC EDGAR API (10-K, 10-Q)
 │   │   ├── companies_house.py
-│   │   ├── indexer.py        # ChromaDB indexing pipeline
-│   │   └── ingest.py         # CLI entrypoint
+│   │   ├── indexer.py          # ChromaDB indexing pipeline
+│   │   └── ingest.py           # CLI entrypoint
 │   ├── retrieval/
-│   │   ├── chunker.py        # 512-token chunks with financial metadata
-│   │   └── hybrid_retriever.py  # Dense + BM25 + RRF + rerank
+│   │   ├── chunker.py          # 512-token chunks with financial metadata
+│   │   └── hybrid_retriever.py # Dense + BM25 + RRF + rerank
 │   └── api/
-│       └── main.py           # FastAPI /analyze endpoint
+│       └── main.py             # FastAPI /analyze + async job endpoints
 ├── ui/
-│   └── app.py                # Streamlit demo
+│   └── app.py                  # Streamlit demo
 ├── monitoring/
-│   └── langfuse_config.py    # Optional Langfuse tracing
+│   └── langfuse_config.py      # Optional Langfuse tracing
 └── tests/
-    └── unit/                 # 24 unit tests (24/24 passing)
+    └── unit/                   # 24 unit tests (24/24 passing)
 ```
 
 ---
@@ -133,15 +135,40 @@ graph TD;
 	retriever(retriever)
 	analyzer(analyzer)
 	critic(critic)
+	query_rewriter(query_rewriter)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> retriever;
+	retriever --> analyzer;
 	analyzer --> critic;
 	critic -. &nbsp;done&nbsp; .-> __end__;
-	critic -. &nbsp;retry&nbsp; .-> retriever;
-	retriever --> analyzer;
+	critic -. &nbsp;retry&nbsp; .-> query_rewriter;
+	query_rewriter --> retriever;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
+```
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `POST` | `/analyze` | Synchronous analysis (ingestion + multi-agent pipeline) |
+| `POST` | `/analyze/async` | Submit async job, returns `job_id` for polling |
+| `GET` | `/analyze/status/{job_id}` | Poll job status (`pending` → `ingesting` → `analyzing` → `completed`) |
+
+For long-running analyses, use the async endpoint to avoid HTTP timeouts:
+```bash
+# Submit job
+curl -X POST http://localhost:8000/analyze/async \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are Apple risk factors?", "company": "AAPL"}'
+# → {"job_id": "a1b2c3d4e5f6", "status": "pending"}
+
+# Poll status
+curl http://localhost:8000/analyze/status/a1b2c3d4e5f6
 ```
 
 ---
