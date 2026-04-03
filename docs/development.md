@@ -168,3 +168,30 @@ Tesla  → CIK 1318605 (Tesla Inc.)        ✓
 - Eliminates redundant BM25 index + CrossEncoder initialization on retry loops and repeated queries
 
 **Test result:** 24/24 passed ✓
+
+---
+
+## Integration Tests — LangGraph Workflow Scenarios
+
+**Goal:** Add end-to-end integration tests for the full multi-agent graph, complementing existing unit tests that cover individual node logic.
+
+**Completed:**
+
+- `tests/integration/test_graph_workflow.py` — 11 integration tests across 5 test classes
+  - All external I/O (ChromaDB, Groq API) patched at module boundaries — runs fully offline
+
+**Test scenarios:**
+
+| Class | Coverage |
+|---|---|
+| `TestShouldRetry` (4 tests) | Conditional edge function: verifies `should_retry()` returns `"retry"` or `"done"` for all state combinations |
+| `TestHappyPath` (2 tests) | Single-pass flow: `final_report` is set, `retry_count` increments to 1 |
+| `TestRetryPath` (2 tests) | Retry flow: query is rewritten after insufficient verdict, documents are refreshed on second retrieval |
+| `TestMaxRetryForcedDone` (2 tests) | Max retry enforcement: `final_report` is set despite persistent insufficient verdict, graph does not loop past `retry_count == 2` |
+| `TestEmptyDocumentHandling` (1 test) | Edge case: graph terminates gracefully when ChromaDB returns no documents |
+
+**Key design decision:**
+- Unit tests own node internals (prompt parsing, Groq call structure).
+- Integration tests own state handoff and graph routing only — they patch all LLM/DB calls and call `graph.ainvoke()` directly.
+
+**Test result:** 35/35 passed ✓ (24 unit + 11 integration)
