@@ -75,6 +75,8 @@ async def analyze_competitors(documents: list[dict]) -> str:
 
 @observe(name="analyzer-node")
 async def analyzer_node(state: AgentState) -> dict:
+    from src.agents.schemas import AnalyzerOutput
+
     risk, growth, competitors = await asyncio.gather(
         analyze_risk(state["documents"]),
         analyze_growth(state["documents"]),
@@ -82,4 +84,4 @@ async def analyzer_node(state: AgentState) -> dict:
     )
 
     analysis = f"## Risk Analysis\n{risk}\n\n## Growth Analysis\n{growth}\n\n## Competitive Analysis\n{competitors}"
-    return {"analysis": analysis}
+    return AnalyzerOutput(analysis=analysis).model_dump()

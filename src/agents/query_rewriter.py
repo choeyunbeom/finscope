@@ -44,5 +44,6 @@ async def query_rewriter_node(state: AgentState) -> dict:
         temperature=0.3,
     )
 
+    from src.agents.schemas import QueryRewriterOutput
     rewritten = response.choices[0].message.content.strip().strip('"')
-    return {"query": rewritten}
+    return QueryRewriterOutput(query=rewritten).model_dump()

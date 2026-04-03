@@ -77,8 +77,9 @@ async def critic_node(state: AgentState) -> dict:
     if verdict == "sufficient" or state.get("retry_count", 0) >= 2:
         final_report = state["analysis"]
 
-    return {
-        "critique": verdict,
-        "critique_feedback": feedback,
-        "final_report": final_report,
-    }
+    from src.agents.schemas import CriticOutput
+    return CriticOutput(
+        critique=verdict,
+        critique_feedback=feedback,
+        final_report=final_report,
+    ).model_dump()
