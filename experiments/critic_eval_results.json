@@ -1,12 +1,17 @@
 {
   "metrics": {
     "sensitivity": 1.0,
-    "specificity": 0.6666666666666666,
-    "accuracy": 0.8333333333333334,
-    "tp": 3,
+    "sensitivity_obvious": 1.0,
+    "sensitivity_subtle": 1.0,
+    "specificity": 1.0,
+    "accuracy": 1.0,
+    "tp": 6,
     "fn": 0,
-    "tn": 2,
-    "fp": 1
+    "tn": 9,
+    "fp": 0,
+    "n_clean": 9,
+    "n_hallucinated": 6,
+    "n_borderline": 3
   },
   "results": [
     {
@@ -14,10 +19,10 @@
       "case_type": "clean",
       "expected": "sufficient",
       "actual": "sufficient",
-      "cited": 7,
-      "uncited": 3,
+      "cited": 8,
+      "uncited": 0,
       "correct": true,
-      "feedback": "The analysis is largely supported by the source excerpts, with most claims being directly cited, resulting in a sufficient verdict."
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims directly citing specific numbers or facts from the provided text."
     },
     {
       "case_id": "clean_2",
@@ -25,79 +30,169 @@
       "expected": "sufficient",
       "actual": "sufficient",
       "cited": 8,
-      "uncited": 2,
+      "uncited": 0,
       "correct": true,
-      "feedback": "The analysis is largely supported by the source excerpts, with most claims being directly cited, and only a minor portion lacking direct citation."
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims directly citing specific numbers or facts from the provided text."
     },
     {
       "case_id": "clean_3",
       "case_type": "clean",
       "expected": "sufficient",
-      "actual": "insufficient",
-      "cited": 7,
-      "uncited": 4,
-      "correct": false,
-      "feedback": "The verdict is insufficient because more than 30% of the claims in the analysis are not directly supported by the provided source excerpts."
-    },
-    {
-      "case_id": "hallucinated_1",
-      "case_type": "hallucinated",
-      "expected": "insufficient",
-      "actual": "insufficient",
-      "cited": 0,
-      "uncited": 9,
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
       "correct": true,
-      "feedback": "The analysis lacks supporting evidence from the source excerpts, with all claims being uncited, which raises concerns about the validity and reliability of the analysis."
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
     },
     {
-      "case_id": "hallucinated_2",
-      "case_type": "hallucinated",
+      "case_id": "clean_4",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
+    },
+    {
+      "case_id": "clean_5",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
+    },
+    {
+      "case_id": "clean_6",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims directly citing numbers or facts from the provided text."
+    },
+    {
+      "case_id": "clean_7",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
+    },
+    {
+      "case_id": "clean_8",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
+    },
+    {
+      "case_id": "clean_9",
+      "case_type": "clean",
+      "expected": "sufficient",
+      "actual": "sufficient",
+      "cited": 8,
+      "uncited": 0,
+      "correct": true,
+      "feedback": "The analysis is well-supported by the source excerpts, with all claims being directly cited from the provided text."
+    },
+    {
+      "case_id": "hallucinated_obvious_1",
+      "case_type": "hallucinated_obvious",
       "expected": "insufficient",
       "actual": "insufficient",
-      "cited": 2,
+      "cited": 3,
       "uncited": 5,
       "correct": true,
-      "feedback": "The analysis contains a significant number of uncited claims, including specific revenue percentages and growth rates, which are not supported by the provided source excerpts."
+      "feedback": "The analysis is deemed insufficient because more than 30% of the claims, specifically 5 out of 8, are not supported by the provided source excerpts."
     },
     {
-      "case_id": "hallucinated_3",
-      "case_type": "hallucinated",
+      "case_id": "hallucinated_obvious_2",
+      "case_type": "hallucinated_obvious",
       "expected": "insufficient",
       "actual": "insufficient",
-      "cited": 0,
-      "uncited": 9,
+      "cited": 3,
+      "uncited": 5,
       "correct": true,
-      "feedback": "The analysis lacks supporting evidence from the source excerpts, with all claims being uncited, which raises concerns about the validity of the conclusions drawn."
+      "feedback": "The analysis is deemed insufficient because more than 30% of the claims, specifically 5 out of 8, are not supported by the provided source excerpts."
+    },
+    {
+      "case_id": "hallucinated_obvious_3",
+      "case_type": "hallucinated_obvious",
+      "expected": "insufficient",
+      "actual": "insufficient",
+      "cited": 3,
+      "uncited": 5,
+      "correct": true,
+      "feedback": "The analysis is deemed insufficient because more than 30% of the claims, specifically 5 out of 8, are not supported by the provided source excerpts."
+    },
+    {
+      "case_id": "hallucinated_subtle_1",
+      "case_type": "hallucinated_subtle",
+      "expected": "insufficient",
+      "actual": "insufficient",
+      "cited": 4,
+      "uncited": 4,
+      "correct": true,
+      "feedback": "The analysis is deemed insufficient because exactly half of the claims are uncited, exceeding the 30% threshold, which indicates a lack of reliable support from the provided source excerpts."
+    },
+    {
+      "case_id": "hallucinated_subtle_2",
+      "case_type": "hallucinated_subtle",
+      "expected": "insufficient",
+      "actual": "insufficient",
+      "cited": 4,
+      "uncited": 4,
+      "correct": true,
+      "feedback": "The analysis is deemed insufficient because exactly half of the claims are uncited, exceeding the 30% threshold, indicating a lack of reliable support from the provided source excerpts."
+    },
+    {
+      "case_id": "hallucinated_subtle_3",
+      "case_type": "hallucinated_subtle",
+      "expected": "insufficient",
+      "actual": "insufficient",
+      "cited": 4,
+      "uncited": 4,
+      "correct": true,
+      "feedback": "The analysis is insufficient because more than 30% of the claims, specifically claims 2, 5, 7, and 8, are not directly supported by the source excerpts."
     },
     {
       "case_id": "borderline_1",
       "case_type": "borderline",
       "expected": "borderline",
-      "actual": "insufficient",
+      "actual": "sufficient",
       "cited": 6,
-      "uncited": 4,
+      "uncited": 2,
       "correct": true,
-      "feedback": "The verdict is insufficient because more than 30% of the claims, specifically claims 3, 8, and 10, and the alternative value in claim 3, are not directly supported by the provided source excerpts."
+      "feedback": "The analysis is deemed sufficient because less than 30% of the claims are uncited, with only claims 2 and 7 containing slightly altered numbers not directly supported by the source excerpts."
     },
     {
       "case_id": "borderline_2",
       "case_type": "borderline",
       "expected": "borderline",
-      "actual": "insufficient",
-      "cited": 7,
-      "uncited": 3,
+      "actual": "sufficient",
+      "cited": 6,
+      "uncited": 2,
       "correct": true,
-      "feedback": "The verdict is insufficient because more than 30% of the claims, specifically claims 2, 8, and 10, contain altered numbers and are not directly supported by the provided source excerpts."
+      "feedback": "The analysis is considered sufficient because only 2 out of 8 claims are uncited, which is less than the 30% threshold."
     },
     {
       "case_id": "borderline_3",
       "case_type": "borderline",
       "expected": "borderline",
       "actual": "insufficient",
-      "cited": 7,
-      "uncited": 3,
+      "cited": 6,
+      "uncited": 2,
       "correct": true,
-      "feedback": "The verdict is insufficient because more than 30% of the claims, specifically claims 3, 8, and 9, are uncited and contain slightly altered numbers not directly supported by the provided source excerpts."
+      "feedback": "The analysis is deemed insufficient because more than 30% of the claims, specifically claims 4 and 7, contain altered numbers that are not directly supported by the source excerpts."
     }
   ]
 }

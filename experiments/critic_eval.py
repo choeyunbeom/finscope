@@ -35,18 +35,20 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 def load_real_chunks(n: int = 8) -> list[dict]:
-    """Pull n chunks from the AAPL collection in ChromaDB."""
+    """Pull chunks that contain real financial figures (not XBRL metadata tags)."""
     client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
     collection = client.get_or_create_collection(name=settings.CHROMA_COLLECTION)
 
-    results = collection.peek(limit=n)
+    # Scan up to 600 chunks and filter for ones with actual numbers
+    results = collection.get(limit=600, include=["documents", "metadatas"])
     chunks = []
-    for i, doc_text in enumerate(results["documents"]):
-        meta = results["metadatas"][i] if results["metadatas"] else {}
-        chunks.append({
-            "text": doc_text,
-            "metadata": meta,
-        })
+    for doc_text, meta in zip(results["documents"], results["metadatas"]):
+        has_figures = re.search(r"\$[\d,]+|[\d,]+\s*(billion|million|%)", doc_text, re.I)
+        no_xbrl = "http" not in doc_text and len(doc_text) > 200
+        if has_figures and no_xbrl:
+            chunks.append({"text": doc_text, "metadata": meta})
+        if len(chunks) >= n:
+            break
     return chunks
 
 
@@ -54,28 +56,45 @@ def load_real_chunks(n: int = 8) -> list[dict]:
 # 2. Synthetic analysis generator
 # ---------------------------------------------------------------------------
 
-GENERATE_CLEAN_PROMPT = """Based ONLY on the following source excerpts, write a short financial analysis (4-6 claims).
-Every claim must cite a specific number or fact from the excerpts.
+GENERATE_CLEAN_PROMPT = """Based ONLY on the following source excerpts, write a financial analysis with exactly 8 claims.
+Every claim must cite a specific number or fact directly from the excerpts.
+Paraphrasing the source is acceptable, but do not invent any numbers.
 
 Source excerpts:
 {context}
 
-Write the analysis now. Each sentence should reference data from the sources."""
+Write the analysis now."""
 
-GENERATE_HALLUCINATED_PROMPT = """Based on the following source excerpts, write a short financial analysis (4-6 claims).
-However, you MUST inject exactly {n_hallucinations} fabricated claims that contain numbers or facts NOT present in the sources.
-Make the fabricated claims sound plausible but they must not be supported by the excerpts.
-Mark each fabricated claim with [FAB] at the end (this marker is for evaluation only).
+# Tier 1: obvious hallucination — numbers completely fabricated (not in source at all)
+GENERATE_HALLUCINATED_OBVIOUS_PROMPT = """Based on the following source excerpts, write a financial analysis with exactly 8 claims.
+Exactly {n_fab} of the claims must contain numbers that are completely fabricated and NOT present anywhere in the source.
+The fabricated numbers should be plausible-sounding but wrong (e.g. wrong revenue figure, invented margin %).
+The other claims should be grounded in the source.
+Mark each fabricated claim with [FAB].
 
 Source excerpts:
 {context}
 
-Write the analysis now, mixing real and fabricated claims."""
+Write the analysis now."""
 
-GENERATE_BORDERLINE_PROMPT = """Based on the following source excerpts, write a short financial analysis with exactly 10 claims.
-Exactly 3 of the 10 claims should contain slightly altered numbers (e.g. rounding differently, off by 5-15%).
-The other 7 should be accurately cited from the sources.
-Mark altered claims with [ALT] at the end.
+# Tier 2: subtle hallucination — paraphrased citation that alters the meaning
+GENERATE_HALLUCINATED_SUBTLE_PROMPT = """Based on the following source excerpts, write a financial analysis with exactly 8 claims.
+Exactly {n_fab} of the claims should cite a real figure from the source but change it slightly
+(e.g. report $94.83B as $98B, flip a YoY increase to a decrease, or report the wrong year).
+These should be hard to detect without checking the source carefully.
+The other claims should be accurately cited.
+Mark each subtly altered claim with [FAB].
+
+Source excerpts:
+{context}
+
+Write the analysis now."""
+
+# Tier 3: borderline — ~30% altered, near the 35% threshold
+GENERATE_BORDERLINE_PROMPT = """Based on the following source excerpts, write a financial analysis with exactly 8 claims.
+Exactly 2 of the 8 claims should contain slightly altered numbers (off by 5-15% or minor rounding).
+The other 6 claims should be accurately cited from the source.
+Mark altered claims with [ALT].
 
 Source excerpts:
 {context}
@@ -102,13 +121,19 @@ def _call_llm(prompt: str) -> str:
 
 
 def generate_test_cases(chunks: list[dict]) -> list[dict]:
-    """Generate synthetic test cases: clean, hallucinated, and borderline."""
+    """Generate 27 synthetic test cases across 3 difficulty tiers.
+
+    Clean (9): source-grounded analyses — expected sufficient
+    Hallucinated obvious (3): completely fabricated numbers — clearly insufficient
+    Hallucinated subtle (3): real figures slightly altered — harder to catch
+    Borderline (3): ~25% altered, near the 35% threshold
+    """
     context = _build_context(chunks)
     cases = []
 
-    # --- Clean analyses (expected: sufficient) ---
-    for i in range(3):
-        print(f"  Generating clean case {i+1}/3...")
+    # --- Clean (9 cases) ---
+    for i in range(9):
+        print(f"  Generating clean case {i+1}/9...")
         analysis = _call_llm(GENERATE_CLEAN_PROMPT.format(context=context))
         cases.append({
             "id": f"clean_{i+1}",
@@ -116,25 +141,39 @@ def generate_test_cases(chunks: list[dict]) -> list[dict]:
             "expected_verdict": "sufficient",
             "analysis": analysis,
         })
-        time.sleep(1)  # rate limit
+        time.sleep(2)
 
-    # --- Fully hallucinated (expected: insufficient) ---
+    # --- Hallucinated obvious (3 cases): 4-5 of 8 claims fabricated → clearly >35% ---
     for i in range(3):
-        print(f"  Generating hallucinated case {i+1}/3...")
-        analysis = _call_llm(GENERATE_HALLUCINATED_PROMPT.format(
-            context=context, n_hallucinations=4
+        print(f"  Generating hallucinated_obvious case {i+1}/3...")
+        analysis = _call_llm(GENERATE_HALLUCINATED_OBVIOUS_PROMPT.format(
+            context=context, n_fab=5
         ))
-        # Strip [FAB] markers before sending to critic
         cases.append({
-            "id": f"hallucinated_{i+1}",
-            "type": "hallucinated",
+            "id": f"hallucinated_obvious_{i+1}",
+            "type": "hallucinated_obvious",
             "expected_verdict": "insufficient",
             "analysis": re.sub(r"\s*\[FAB\]", "", analysis),
             "analysis_with_markers": analysis,
         })
-        time.sleep(1)
+        time.sleep(2)
 
-    # --- Borderline ~30% hallucinated (expected: could go either way) ---
+    # --- Hallucinated subtle (3 cases): 3-4 of 8 claims subtly altered → >35%, harder ---
+    for i in range(3):
+        print(f"  Generating hallucinated_subtle case {i+1}/3...")
+        analysis = _call_llm(GENERATE_HALLUCINATED_SUBTLE_PROMPT.format(
+            context=context, n_fab=4
+        ))
+        cases.append({
+            "id": f"hallucinated_subtle_{i+1}",
+            "type": "hallucinated_subtle",
+            "expected_verdict": "insufficient",
+            "analysis": re.sub(r"\s*\[FAB\]", "", analysis),
+            "analysis_with_markers": analysis,
+        })
+        time.sleep(2)
+
+    # --- Borderline (3 cases): 2 of 8 claims altered (25%) → near threshold ---
     for i in range(3):
         print(f"  Generating borderline case {i+1}/3...")
         analysis = _call_llm(GENERATE_BORDERLINE_PROMPT.format(context=context))
@@ -145,7 +184,7 @@ def generate_test_cases(chunks: list[dict]) -> list[dict]:
             "analysis": re.sub(r"\s*\[ALT\]", "", analysis),
             "analysis_with_markers": analysis,
         })
-        time.sleep(1)
+        time.sleep(2)
 
     return cases
 
@@ -259,34 +298,39 @@ def print_report(results: list[EvalResult]):
         print(f"      Cited/Uncited: {r.cited}/{r.uncited}")
         print(f"      Feedback: {r.feedback[:100]}")
 
-    # Confusion matrix (excluding borderline)
     clean_results = [r for r in results if r.case_type == "clean"]
-    halluc_results = [r for r in results if r.case_type == "hallucinated"]
+    halluc_obvious = [r for r in results if r.case_type == "hallucinated_obvious"]
+    halluc_subtle  = [r for r in results if r.case_type == "hallucinated_subtle"]
+    halluc_all     = halluc_obvious + halluc_subtle
     borderline_results = [r for r in results if r.case_type == "borderline"]
 
-    tp = sum(1 for r in halluc_results if r.actual_verdict == "insufficient")
-    fn = sum(1 for r in halluc_results if r.actual_verdict == "sufficient")
+    tp = sum(1 for r in halluc_all if r.actual_verdict == "insufficient")
+    fn = sum(1 for r in halluc_all if r.actual_verdict == "sufficient")
     tn = sum(1 for r in clean_results if r.actual_verdict == "sufficient")
     fp = sum(1 for r in clean_results if r.actual_verdict == "insufficient")
 
+    tp_ob = sum(1 for r in halluc_obvious if r.actual_verdict == "insufficient")
+    tp_su = sum(1 for r in halluc_subtle  if r.actual_verdict == "insufficient")
+
     print("\n" + "-" * 70)
-    print("CONFUSION MATRIX (clean vs hallucinated only)")
+    print("CONFUSION MATRIX (clean vs hallucinated, borderline excluded)")
     print("-" * 70)
     print(f"                    Predicted")
     print(f"                    sufficient  insufficient")
-    print(f"  Actual clean      {tn:>6}      {fp:>6}")
-    print(f"  Actual halluc     {fn:>6}      {tp:>6}")
+    print(f"  Actual clean      {tn:>6}      {fp:>6}   (n={len(clean_results)})")
+    print(f"  Actual halluc     {fn:>6}      {tp:>6}   (n={len(halluc_all)})")
 
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
 
-    print(f"\n  Sensitivity (hallucination detection): {sensitivity:.0%} ({tp}/{tp+fn})")
-    print(f"  Specificity (clean pass-through):      {specificity:.0%} ({tn}/{tn+fp})")
-    print(f"  Accuracy:                              {accuracy:.0%}")
+    print(f"\n  Sensitivity overall:          {sensitivity:.0%} ({tp}/{tp+fn})")
+    print(f"    — Obvious hallucination:    {tp_ob/len(halluc_obvious):.0%} ({tp_ob}/{len(halluc_obvious)})")
+    print(f"    — Subtle hallucination:     {tp_su/len(halluc_subtle):.0%} ({tp_su}/{len(halluc_subtle)})")
+    print(f"  Specificity (clean):          {specificity:.0%} ({tn}/{tn+fp})")
+    print(f"  Accuracy:                     {accuracy:.0%}")
 
-    # Borderline behavior
-    print(f"\n  Borderline cases (~30% altered):")
+    print(f"\n  Borderline cases (~25% altered, near threshold):")
     for r in borderline_results:
         print(f"    {r.case_id}: {r.actual_verdict} (cited={r.cited}, uncited={r.uncited})")
 
@@ -294,9 +338,14 @@ def print_report(results: list[EvalResult]):
 
     return {
         "sensitivity": sensitivity,
+        "sensitivity_obvious": tp_ob / len(halluc_obvious) if halluc_obvious else 0,
+        "sensitivity_subtle": tp_su / len(halluc_subtle) if halluc_subtle else 0,
         "specificity": specificity,
         "accuracy": accuracy,
         "tp": tp, "fn": fn, "tn": tn, "fp": fp,
+        "n_clean": len(clean_results),
+        "n_hallucinated": len(halluc_all),
+        "n_borderline": len(borderline_results),
     }
 
 
