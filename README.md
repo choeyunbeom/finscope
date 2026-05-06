@@ -191,7 +191,7 @@ Tested on Apple (AAPL) 10-K filing (2025-10-31):
 
 ## Critic Agent Evaluation
 
-We tested whether the Critic Agent's LLM-as-Judge approach actually catches hallucinations by running synthetic test cases (clean, hallucinated, and borderline analyses) against real AAPL 10-K source chunks.
+I tested whether the Critic Agent's LLM-as-Judge approach actually catches hallucinations by running synthetic test cases (clean, hallucinated, and borderline analyses) against real AAPL 10-K source chunks.
 
 | Metric | 70B (llama-3.3-70b) | 8B (llama-3.1-8b) |
 |---|---|---|
