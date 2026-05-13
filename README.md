@@ -26,8 +26,8 @@ flowchart TD
     C --> D["Analyzer Agent"]
     D --> D1["Risk"] & D2["Growth"] & D3["Competitor"]
     D1 & D2 & D3 --> E["Critic Agent\ncitation check (semantic equivalence)"]
-    E -- "≤35% uncited" --> F["Final Report with source citations"]
-    E -- ">35% uncited\n(max 2 retries)" --> QR["Query Rewriter\nfeedback-driven query reformulation"]
+    E -- "≤30% uncited" --> F["Final Report with source citations"]
+    E -- ">30% uncited\n(max 2 retries)" --> QR["Query Rewriter\nfeedback-driven query reformulation"]
     QR --> C
 ```
 
